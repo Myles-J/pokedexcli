@@ -5,12 +5,19 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/Myles-J/pokedexcli/internal/pokeapi"
 )
+
+type config struct {
+	nextURL     string
+	previousURL string
+}
 
 type cliCommand struct {
 	name        string
 	description string
-	callback    func() error
+	callback    func(*config) error
 }
 
 var commands = map[string]cliCommand{
@@ -24,10 +31,23 @@ var commands = map[string]cliCommand{
 		description: "Exit the Pokedex",
 		callback:    commandExit,
 	},
+	"map": {
+		name:        "map",
+		description: "Get the next 20 locations",
+		callback:    commandMap,
+	},
+	"mapb": {
+		name:        "mapb",
+		description: "Get the previous 20 locations",
+		callback:    commandMapb,
+	},
 }
 
 func main() {
-	// wait for input
+	cfg := &config{
+		nextURL:     "https://pokeapi.co/api/v2/location-area",
+		previousURL: "",
+	}
 	reader := bufio.NewScanner(os.Stdin)
 
 	for {
@@ -47,24 +67,63 @@ func main() {
 			continue
 		}
 
-		err := command.callback()
+		err := command.callback(cfg)
 		if err != nil {
 			fmt.Println(err)
 		}
 	}
 }
 
-func commandHelp() error {
+func commandHelp(cfg *config) error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	fmt.Println("help: Display this help message")
 	fmt.Println("exit: Exit the Pokedex")
+	fmt.Println("map: Get the next 20 locations")
+	fmt.Println("mapb: Get the previous 20 locations")
 	return nil
 }
 
-func commandExit() error {
+func commandExit(cfg *config) error {
 	fmt.Println("Closing the Pokedex... Goodbye!")
 	os.Exit(0)
+	return nil
+}
+
+func commandMap(cfg *config) error {
+	locations, nextURL, err := pokeapi.GetLocations(cfg.nextURL)
+	if err != nil {
+		return err
+	}
+
+	cfg.previousURL = cfg.nextURL
+	cfg.nextURL = nextURL
+
+	fmt.Println("You can choose from the following locations:")
+	for _, location := range locations {
+		fmt.Println(location)
+	}
+	return nil
+}
+
+func commandMapb(cfg *config) error {
+	if cfg.previousURL == "" {
+		fmt.Println("You're on the first page")
+		return nil
+	}
+
+	locations, nextURL, err := pokeapi.GetLocations(cfg.previousURL)
+	if err != nil {
+		return err
+	}
+
+	cfg.nextURL = cfg.previousURL
+	cfg.previousURL = nextURL
+
+	fmt.Println("You can choose from the following locations:")
+	for _, location := range locations {
+		fmt.Println(location)
+	}
 	return nil
 }
 
