@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Myles-J/pokedexcli/internal/pokeapi"
+	"github.com/Myles-J/pokedexcli/internal/pokecache"
 )
 
 type config struct {
 	nextURL     string
 	previousURL string
+	cache       *pokecache.Cache
 }
 
 type cliCommand struct {
@@ -47,6 +50,7 @@ func main() {
 	cfg := &config{
 		nextURL:     "https://pokeapi.co/api/v2/location-area",
 		previousURL: "",
+		cache:       pokecache.NewCache(10 * time.Second),
 	}
 	reader := bufio.NewScanner(os.Stdin)
 
@@ -91,7 +95,7 @@ func commandExit(cfg *config) error {
 }
 
 func commandMap(cfg *config) error {
-	locations, nextURL, err := pokeapi.GetLocations(cfg.nextURL)
+	locations, nextURL, err := pokeapi.GetLocations(cfg.nextURL, cfg.cache)
 	if err != nil {
 		return err
 	}
@@ -112,7 +116,7 @@ func commandMapb(cfg *config) error {
 		return nil
 	}
 
-	locations, nextURL, err := pokeapi.GetLocations(cfg.previousURL)
+	locations, nextURL, err := pokeapi.GetLocations(cfg.previousURL, cfg.cache)
 	if err != nil {
 		return err
 	}
@@ -132,3 +136,4 @@ func cleanInput(input string) []string {
 	trimmed := strings.Fields(lower)
 	return trimmed
 }
+

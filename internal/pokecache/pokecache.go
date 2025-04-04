@@ -11,15 +11,34 @@ type CacheEntry struct {
 }
 
 type Cache struct {
-	mu    sync.RWMutex
-	cache map[string]CacheEntry
+	mu       sync.RWMutex
+	interval time.Duration
+	cache    map[string]CacheEntry
 }
 
 func NewCache(interval time.Duration) *Cache {
-	return &Cache{
+	cache := &Cache{
 		interval: interval,
 		cache:    make(map[string]CacheEntry),
 	}
+
+	go cache.reapLoop()
+
+	return cache
+}
+
+func (c *Cache) Add(key string, val []byte) ([]byte, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	cacheEntry := CacheEntry{
+		createdAt: time.Now(),
+		val:       val,
+	}
+
+	c.cache[key] = cacheEntry
+
+	return cacheEntry.val, false
 }
 
 func (c *Cache) Get(key string) ([]byte, bool) {
@@ -39,4 +58,23 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 	}
 
 	return entry.val, true
+}
+
+// reapLoop is a helper function that deletes expired entries from the cache
+func (c *Cache) reapLoop() {
+	ticker := time.NewTicker(c.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			c.mu.Lock()
+			for key, entry := range c.cache {
+				if time.Since(entry.createdAt) > c.interval {
+					delete(c.cache, key)
+				}
+			}
+			c.mu.Unlock()
+		}
+	}
 }
