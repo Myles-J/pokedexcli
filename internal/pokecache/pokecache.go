@@ -60,7 +60,7 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 	return entry.val, true
 }
 
-// reapLoop is a helper function that deletes expired entries from the cache
+// reapLoop is a helper function that deletes expired entries from the cache.
 func (c *Cache) reapLoop() {
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
